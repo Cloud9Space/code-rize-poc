@@ -3,35 +3,16 @@ import L from 'leaflet';
 // postCSS import of Leaflet's CSS
 import 'leaflet/dist/leaflet.css';
 // using webpack json loader we can import our geojson file like this
-import geojson from 'json!./Guija_Settelments.geojson';
+import settlement from 'json!./Guija_Settelments.geojson';
 import polulation from 'json!./Guija_population.geojson';
 // import local components Filter and ForkMe
 
 import 'leaflet-draw/dist/leaflet.draw.js';
 import 'leaflet-draw/dist/leaflet.draw.css';
+import leafletPip from 'leaflet-pip';
 // store the map configuration properties in an object,
 // we could also move this to a separate file & import it if desired.
-let config = {};
-config.params = {
-  center: [-24.749434, 32.961285],
-  zoomControl: false,
-  zoom: 8,
-  scrollwheel: false,
-  legends: true,
-  infoControl: false,
-  attributionControl: true
-};
-config.tileLayer = {
-  // uri: 'http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-  // uri: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-  uri: 'https://tile.osm.ch/switzerland/{z}/{x}/{y}.png',
-  params: {
-    // minZoom: 11,
-    attribution: '&copy; OpenStreetMap France | &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    id: '',
-    accessToken: ''
-  }
-};
+
 
 
 var osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -43,13 +24,24 @@ var osmHOT = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png'
   maxZoom: 19,
   attribution: '© OpenStreetMap contributors, Tiles style by Humanitarian OpenStreetMap Team hosted by OpenStreetMap France'
 });
+let config = {};
+config.params = {
+  center: [-24.749434, 32.961285],
+  zoomControl: false,
+  zoom: 8,
+  scrollwheel: false,
+  legends: true,
+  infoControl: false,
+  attributionControl: true,
+  layers: osm
+};
 
-var baseMaps= {
+var baseMaps = {
   "OpenStreetMap": osm,
   "OpenStreetMap.HOT": osmHOT
 }
 var overlayMaps = {
-  
+
 }
 
 
@@ -66,12 +58,13 @@ class Map extends Component {
       // geojson: null,
     };
     this._mapNode = null;
+    // this.getDataWithinPolygon = this.getDataWithinPolygon.bind(this);
   }
 
   componentDidMount() {
     // code to run just after the component "mounts" / DOM elements are created
     // we could make an AJAX request for the GeoJSON data here if it wasn't stored locally
-    this.getData();
+    // this.getData();
     // create the Leaflet map object
     if (!this.state.map) this.init(this._mapNode);
   }
@@ -98,20 +91,13 @@ class Map extends Component {
     this.state.map.remove();
   }
 
-  getData() {
-    // could also be an AJAX request that results in setting state with the geojson data
-    // for simplicity sake we are just importing the geojson data using webpack's json loader
-    this.setState({
-      geojson
-    });
-  }
 
 
 
   addGeoJSONLayer() {
     // create a native Leaflet GeoJSON SVG Layer to add as an interactive overlay to the map
     // an options object is passed to define functions for customizing the layer
-    const settlementLayer = L.geoJson(geojson, {
+    const settlementLayer = L.geoJson(settlement, {
       // onEachFeature: this.onEachFeature,
       // pointToLayer: this.pointToLayer,
       // filter: this.filterFeatures
@@ -156,6 +142,8 @@ class Map extends Component {
 
 
 
+
+
   init(id) {
     if (this.state.map) return;
     this.addGeoJSONLayer();
@@ -197,10 +185,20 @@ class Map extends Component {
 
     map.addControl(drawControl);
 
-    map.on(L.Draw.Event.CREATED, function (event) {
+    map.on(L.Draw.Event.CREATED, (event) => {
       const layer = event.layer;
       drawnItems.addLayer(layer);
       layer.bindPopup("This is a polygon!");
+
+      // Extract polygon coordinates
+      const polygonCoordinates = layer.getLatLngs();
+      console.log(polygonCoordinates)
+      // Assuming you have a GeoJSON layer named 'priorLayer' with feature data
+      // const dataWithinPolygon = this.getDataWithinPolygon(polygonCoordinates, overlayMaps.settlement);
+
+      // Log or process the extracted data as needed
+      // console.log('Data within polygon:', dataWithinPolygon);
+
 
     });
 
@@ -208,12 +206,52 @@ class Map extends Component {
 
 
     // a TileLayer is used as the "basemap"
-    const tileLayer = L.tileLayer(config.tileLayer.uri, config.tileLayer.params).addTo(map);
+    // const tileLayer = L.tileLayer(config.tileLayer.uri, config.tileLayer.params).addTo(map);
 
     // set our state to include the tile layer
-    this.setState({ map, tileLayer });
+    // this.setState({ map, tileLayer });
+    this.setState({ map});
   }
-
+  // getDataWithinPolygon(polygonCoordinates, priorLayer) {
+  //   const dataWithinPolygon = [];
+  // console.log(priorLayer)
+  //   if (priorLayer) {
+  //     var item = priorLayer._layers
+  //     Object.keys(item).forEach((sm)=>{
+  //       //  priorLayer._layer(item => {
+  //       const geometry = item[sm].feature.geometry;
+  //       console.log(geometry.type)
+  //       if (geometry.type === 'MultiPolygon') {
+  //         // Handle MultiPolygon
+  //         geometry.coordinates.forEach(polygonCoords => {
+  //           const isPointInPolygon = this.checkAllPointsInPolygon(polygonCoordinates, polygonCoords);
+  //           if (isPointInPolygon) {
+  //             dataWithinPolygon.push(feature);
+  //           }
+  //         });
+  //       } 
+  //       else if (geometry.type === 'Polygon') {
+  //         // Handle Polygon
+  //         const isPointInPolygon = this.checkAllPointsInPolygon(polygonCoordinates, geometry.coordinates);
+  //         if (isPointInPolygon) {
+  //           dataWithinPolygon.push(feature);
+  //         }
+  //       }
+  //     });
+  //   }
+  
+  //   return dataWithinPolygon;
+  // }
+  
+  checkAllPointsInPolygon(polygonCoordinates, polygonCoords) {
+    // Helper function to check if all points are within a polygon
+    return polygonCoordinates.every(point =>
+      leafletPip.pointInLayer(L.latLng(point.lat, point.lng), L.polygon(polygonCoords))
+    );
+  }
+  
+  
+  
   render() {
     const { subwayLinesFilter } = this.state;
     return (
