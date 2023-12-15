@@ -2,7 +2,8 @@ import React, { Component } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import settlement from 'json!./Guija_Settelments.geojson';
-import polulation from 'json!./Guija_population.geojson';
+import population from 'json!./Guija_population.geojson';
+import Grid_lines from 'json!./Grid_line.geojson';
 import 'leaflet-draw/dist/leaflet.draw.js';
 import 'leaflet-draw/dist/leaflet.draw.css';
 import leafletPip from 'leaflet-pip';
@@ -68,7 +69,7 @@ class Map extends Component {
     overlayMaps['settlement'] = settlementLayer
     this.setState({ settlementLayer });
 
-    const populationLayer = L.geoJson(polulation, {
+    const populationLayer = L.geoJson(population, {
       style: function (feature) {
         return {
           color: '#00CC00',
@@ -81,6 +82,23 @@ class Map extends Component {
     });
     overlayMaps['population'] = populationLayer
     this.setState({ polulationgeojson: populationLayer });
+
+
+    const gridLayer = L.geoJson(Grid_lines, {
+      style: function (feature) {
+        return {
+          color: 'black',
+          fillColor: 'black',
+          weight: 0.4,
+          opacity: 1,
+          fillOpacity: 0.2,
+        };
+      }
+    });
+    overlayMaps['grid'] = gridLayer
+    this.setState({ polulationgeojson: gridLayer });
+
+
   }
 
   // checkAllPointsInPolygon(polygonCoordinates, polygonCoords) {
@@ -174,7 +192,6 @@ class Map extends Component {
     map.on(L.Draw.Event.CREATED, (event) => {
       const layer = event.layer;
       drawnItems.addLayer(layer);
-      layer.bindPopup("This is a polygon!");
 
       // Extract polygon coordinates
       const polygonCoordinates = layer.getLatLngs();
@@ -193,8 +210,10 @@ class Map extends Component {
           }
         }]
       };
+      geojsonPolygon.features[0].geometry.coordinates[0].push(geojsonPolygon.features[0].geometry.coordinates[0][0]);
+      console.log("geojsonPolygon: ", geojsonPolygon.features[0].geometry.coordinates);
 
-      const idk = L.geoJson(geojsonPolygon, {
+      const DrawnPolygonLayer = L.geoJson(geojsonPolygon, {
         style: function (feature) {
           return {
             color: '#00CC00',
@@ -205,48 +224,135 @@ class Map extends Component {
           };
         }
       });
-      console.log(idk)
-
-      // const geoJSONLayer = L.geoJSON(geojsonPolygon, {
-      //   style: function (feature) {
-      //     // Customize the style based on feature properties if needed
-      //     return {
-      //       color: 'red',
-      //       fillColor: 'blue',
-      //       weight: 2,
-      //       opacity: 1,
-      //       fillOpacity: 0.5
-      //     };
-      //   }
-      // });
+      console.log(DrawnPolygonLayer)
 
       var properties = [];
       settlement.features.forEach((feature) => {
         const settlementCoords = feature.geometry.coordinates[0][0];
         // console.log(feature.properties)
         var flag = false;
-        settlementCoords.forEach((polygonCoords) => {
+        // settlementCoords.forEach((polygonCoords) => {
 
-          const isInside = leafletPip.pointInLayer(L.latLng(polygonCoords[1], polygonCoords[0]), idk);
-          // if(isInside.length>0)console.log("isInside", isInside)
-          if (isInside.length > 0) {
+          // const isInside = leafletPip.pointInLayer(L.latLng(polygonCoords[1], polygonCoords[0]), DrawnPolygonLayer);
+          const turfPolygon = turf.polygon(geojsonPolygon.features[0].geometry.coordinates);
+          const turfLayer = turf.multiPolygon(feature.geometry.coordinates);
+  
+          // const isInside = leafletPip.pointInLayer(L.latLng(polygonCoords[1], polygonCoords[0]), DrawnPolygonLayer);
+          const intersection = turf.intersect(turfPolygon, turfLayer);
+          if (intersection) {
 
             flag = true;
           }
-        });
-        if(flag === true)
+        // });
+        if (flag === true)
           properties.push(feature.properties)
       });
-console.log(properties)
-      const totalPopulation = [properties.reduce((accumulator,currentValue)=>{
+      // console.log(properties)
+      var totalPopulation_settlement = [properties.reduce((accumulator, currentValue) => {
         return accumulator + currentValue.population;
-      },0)]
-      console.log(totalPopulation)
-      const data = {
+      }, 0)]
+      console.log(totalPopulation_settlement)
+      var data = {
         properties,
-        totalPopulation 
+        totalPopulation : totalPopulation_settlement
       }
-      this.downloadObjectAsJson(data, 'myFile.json');
+      this.downloadObjectAsCsv(data, 'settlements.csv');
+
+
+
+      properties = [];
+      population.features.forEach((feature) => {
+        const populationCoords = feature.geometry.coordinates[0];
+        // console.log(feature.properties)
+        var flag = false;
+        // populationCoords.forEach((polygonCoords) => {
+
+          // const isInside = leafletPip.pointInLayer(L.latLng(polygonCoords[1], polygonCoords[0]), DrawnPolygonLayer);
+          const turfPolygon = turf.polygon(geojsonPolygon.features[0].geometry.coordinates);
+          const turfLayer = turf.multiPolygon(feature.geometry.coordinates);
+  
+          // const isInside = leafletPip.pointInLayer(L.latLng(polygonCoords[1], polygonCoords[0]), DrawnPolygonLayer);
+          const intersection = turf.intersect(turfPolygon, turfLayer);
+          // if(isInside.length>0)console.log("isInside", isInside)
+          if (intersection) {
+
+            flag = true;
+          }
+        // });
+        if (flag === true)
+          properties.push(feature.properties)
+      });
+      // console.log(properties)
+      var totalPopulation_polupation = [properties.reduce((accumulator, currentValue) => {
+        return accumulator + currentValue.DN;
+      }, 0)]
+      console.log(totalPopulation_polupation)
+      data = {
+        properties,
+        totalPopulation:totalPopulation_polupation
+      }
+      this.downloadObjectAsCsv(data, 'population.csv');
+
+
+      properties = [];
+      settlement.features.forEach((feature) => {
+        // const populationCoords = feature.geometry.coordinates[0];
+        // console.log(feature.properties)
+        var flag = false;
+        // populationCoords.forEach((polygonCoords) => {
+        const turfPolygon = turf.polygon(geojsonPolygon.features[0].geometry.coordinates);
+        const turfLayer = turf.multiPolygon(feature.geometry.coordinates);
+
+        // const isInside = leafletPip.pointInLayer(L.latLng(polygonCoords[1], polygonCoords[0]), DrawnPolygonLayer);
+        const intersection = turf.intersect(turfPolygon, turfLayer);
+        // console.log("intersection",intersection)
+        if (intersection) {
+          // Calculate the area of the intersection
+          const intersectionArea = turf.area(intersection);
+
+// A----turfLayer
+// I ---
+// 100 --- turfLayer
+// 40 ---- ?
+
+          // Calculate the area of the original polygon
+          const polygonArea = turf.area(turfLayer);
+          console.log(polygonArea )
+          // Calculate the portion of the intersection
+          const portion = intersectionArea / polygonArea;
+          console.log("portion",portion)
+          console.log("portion*feature.properties.population" ,portion*feature.properties.population)
+          properties.push({...feature.properties,portion : portion,effectivepopulation:portion*feature.properties.population})
+          // console.log(`Intersection Area: ${intersectionArea}`);
+          // console.log(`Polygon Area: ${polygonArea}`);
+          console.log(`Portion of Intersection: ${portion}`);
+        } else {
+          // console.log("No intersection");
+        }
+        // if(isInside.length>0)console.log("isInside", isInside)
+        // if (isInside.length > 0) {
+
+        //   flag = true;
+        // }
+        // });
+        // if (flag === true)
+        // properties.push(feature.properties)
+      });
+      console.log("properties",properties)
+      var effectivepopulation_partial = [properties.reduce((accumulator, currentValue) => {
+        return accumulator + currentValue.effectivepopulation;
+      }, 0)]
+      console.log(effectivepopulation_partial)
+      data = {
+        properties,
+        effectivepopulation : effectivepopulation_partial
+      }
+      this.downloadObjectAsCsv(data, 'population_partialIncluded.csv');
+
+
+
+      layer.bindPopup("Settlements: " + totalPopulation_settlement + "\nPopulation: " + totalPopulation_polupation + "\nPopulation Partial: " + effectivepopulation_partial);
+
 
       // Check points in settlement layer
       // settlement.features.forEach((feature) => {
@@ -275,23 +381,40 @@ console.log(properties)
   }
 
 
-  downloadObjectAsJson(obj, filename) {
-    const jsonStr = JSON.stringify(obj, null, 2); // null, 2 adds indentation for readability
-  
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-  
+  downloadObjectAsCsv(obj, filename) {
+    const csvContent = this.convertObjectToCsv(obj);
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = filename;
-  
+
     // Append the link to the body
     document.body.appendChild(link);
-  
+
     // Trigger a click event on the link
     link.click();
-  
+
     // Remove the link from the DOM
     document.body.removeChild(link);
+  }
+
+  convertObjectToCsv(obj) {
+    var properties = obj.properties
+    console.log("properties", properties)
+    const headers = Object.keys(properties[0]);
+    const values = properties.map((item) => (Object.values(item)).join(','));
+    var v1 = values.join('\n') + '\n'
+    const headerRow = headers.join(',') + '\n';
+    // const valueRow = values.join(',') + '\n';
+
+    var polulationdata 
+    obj.totalPopulation?polulationdata = obj.totalPopulation:polulationdata = obj.effectivepopulation
+
+
+    // console.log(v1)
+    return headerRow + v1 + "\nTotal Population" + ',' + polulationdata;
+    return " "
   }
 
   render() {
