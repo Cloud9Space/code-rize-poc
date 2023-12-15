@@ -66,6 +66,7 @@ class Map extends Component {
         };
       }
     });
+    settlementLayer.bindPopup("Settlement Layer")
     overlayMaps['settlement'] = settlementLayer
     this.setState({ settlementLayer });
 
@@ -80,6 +81,7 @@ class Map extends Component {
         };
       }
     });
+    populationLayer.bindPopup("Population Layer")
     overlayMaps['population'] = populationLayer
     this.setState({ polulationgeojson: populationLayer });
 
