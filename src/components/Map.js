@@ -53,7 +53,7 @@ export default function Map() {
         if (!map) {
             init(_mapNode);
         }
-        }, []);
+    }, []);
 
     const addGeoJSONLayer = () => {
         var settlementLayer = L.geoJson(settlement, {
@@ -65,9 +65,20 @@ export default function Map() {
                     opacity: 1,
                     fillOpacity: 0.8,
                 };
+            },
+            onEachFeature: function (feature, layer) {
+                // Bind a popup to each polygon with properties information
+                // console.log(feature)
+                // console.log(layer)
+                var popupContent = "<b>Object Id:</b> " + feature.properties.OBJECTID + "<br>" +
+                    "<b>Name:</b> " + feature.properties.adm2_name + "<br>" +
+                    "<b>Country:</b> " + feature.properties.country + "<br>" +
+                    "<b>Population:</b> " + feature.properties.population + "<br>" +
+                    "<b>Settlement Type:</b> " + feature.properties.type;
+                layer.bindPopup(popupContent);
             }
         });
-        settlementLayer.bindPopup("Settlement Layer")
+        // settlementLayer.bindPopup("Settlement Layer")
         overlayMaps['settlement'] = settlementLayer
 
         var populationLayer = L.geoJson(population, {
@@ -79,9 +90,18 @@ export default function Map() {
                     opacity: 1,
                     fillOpacity: 0.5,
                 };
+            },
+            onEachFeature: function (feature, layer) {
+                // Bind a popup to each polygon with properties information
+                // console.log(feature)
+                // console.log(layer)
+                var popupContent = "<b>Id:</b> " + feature.properties.fid + "<br>" +
+                    "<b>DN:</b> " + feature.properties.DN;
+
+                layer.bindPopup(popupContent);
             }
         });
-        populationLayer.bindPopup("Population Layer")
+        // populationLayer.bindPopup("Population Layer")
         overlayMaps['population'] = populationLayer
 
 
@@ -101,18 +121,47 @@ export default function Map() {
 
     }
 
-
+    function getColor(d) {
+        return d === "Settlement"? "#CC0066":
+                d === "Population"? "#00CC00":
+                "white";
+    }
 
 
     const init = (id) => {
-        if (map !==null) return;
-        
+        if (map !== null) return;
+
         addGeoJSONLayer();
 
         let map_i = L.map(id, config.params);
         var layerControl = L.control.layers(baseMaps, overlayMaps).addTo(map_i);
         L.control.zoom({ position: "bottomleft" }).addTo(map_i);
         L.control.scale({ position: "bottomleft" }).addTo(map_i);
+        var legend = L.control({ position: 'bottomright' });
+
+        // legend.onAdd = function (map) {
+        //     var div = L.DomUtil.create('div', 'info legend');
+        //     // ... (your existing code)
+        //     console.log("Legend content created:", div.innerHTML);
+        //     return div;
+        // };
+        legend.onAdd = function (map) {
+            var div = L.DomUtil.create('div', 'info legend'),
+                grades = ["Settlement", "Population"],
+                labels = [];
+                console.log("Legend content created:", div.innerHTML);
+            // loop through our density intervals and generate a label with a colored square for each interval
+            for (var i = 0; i < grades.length; i++) {
+                div.innerHTML +=
+                    '<div style="margin-bottom: 5px"><i style="background:' + getColor(grades[i]) + '"></i> ' +
+                    grades[i] +'</div>';
+            }
+
+            return div;
+        };
+
+        legend.addTo(map_i);
+
 
         const drawnItems = new L.FeatureGroup();
         map_i.addLayer(drawnItems);
@@ -136,7 +185,7 @@ export default function Map() {
             },
             edit: {
                 featureGroup: drawnItems,
-                edit:false,
+                edit: false,
                 remove: true
             }
         });
@@ -164,7 +213,7 @@ export default function Map() {
             };
             geojsonPolygon.features[0].geometry.coordinates[0].push(geojsonPolygon.features[0].geometry.coordinates[0][0]);
 
-        
+
 
             var properties = [];
             settlement.features.forEach((feature) => {
@@ -237,7 +286,7 @@ export default function Map() {
                     const portion = intersectionArea / polygonArea;
                     properties.push({ ...feature.properties, portion: portion, effectivepopulation: portion * feature.properties.population })
 
-                } 
+                }
 
             });
 
@@ -251,16 +300,15 @@ export default function Map() {
             }
             downloadObjectAsCsv(data, 'population_partialIncluded.csv');
 
-
-
             layer.bindPopup("Settlements: " + totalPopulation_settlement + "\nPopulation: " + totalPopulation_polupation + "\nPopulation Partial: " + effectivepopulation_partial);
+
+
 
 
         });
 
         setMap(map_i);
     }
-
 
     const downloadObjectAsCsv = (obj, filename) => {
         const csvContent = convertObjectToCsv(obj);
